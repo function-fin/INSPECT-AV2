@@ -1,4 +1,4 @@
--- [[ CUBNIT OMNI - DATABASE & CLIPBOARD v33.5 (REAL ANIMATION THUMBNAILS FIX) ]] --
+-- [[ CUBNIT OMNI - DATABASE & CLIPBOARD v33.7 (REMOTE-BASED ANIMATIONS FIX) ]] --
 local Players, Marketplace, UserInputService, HttpService, ReplicatedStorage = game:GetService("Players"), game:GetService("MarketplaceService"), game:GetService("UserInputService"), game:GetService("HttpService"), game:GetService("ReplicatedStorage")
 local LP, PG = Players.LocalPlayer, Players.LocalPlayer:WaitForChild("PlayerGui")
 local FILE_NAME, remotesFolder = "CubnitOmni_SavedAvatars.json", ReplicatedStorage:WaitForChild("Remotes", 5)
@@ -78,9 +78,11 @@ local function clonarSkinBrookhaven(skinData)
     if not wearRemote then return end
     local character = LP.Character or LP.CharacterAdded:Wait()
     local humanoid = character:WaitForChild("Humanoid")
-    local tentativas, maxTentativas = 0, 2
+    local tentacles, maxTentativas = 0, 2
+    
+    -- Removendo acessórios e roupas atuais usando o Remote padrão do jogo
     repeat
-        tentativas = tentativas + 1
+        tentacles = tentacles + 1
         local success, appliedDescription = pcall(function() return humanoid:GetAppliedDescription() end)
         if not success or not appliedDescription then break end
         local itensRestantes = 0
@@ -99,19 +101,34 @@ local function clonarSkinBrookhaven(skinData)
             itensRestantes = itensRestantes + 1 pcall(function() wearRemote:InvokeServer(tonumber(appliedDescription.Head)) end) task.wait(0.9)
         end
         task.wait(0.5) 
-    until itensRestantes == 0 or tentativas >= maxTentativas
+    until itensRestantes == 0 or tentacles >= maxTentativas
 
+    -- Aplicando partes do corpo padrão
     if skinData.BodyParts then
         for partName, partId in pairs(skinData.BodyParts) do
             if partId and tonumber(partId) ~= 0 and tonumber(partId) ~= 4843936835 then pcall(function() wearRemote:InvokeServer(tonumber(partId)) end) task.wait(0.9) end
         end
     end
+    
+    -- Aplicando Roupas e Rosto
     if skinData.Shirt and tonumber(skinData.Shirt) ~= 0 then pcall(function() wearRemote:InvokeServer(tonumber(skinData.Shirt)) end) task.wait(0.9) end
     if skinData.Pants and tonumber(skinData.Pants) ~= 0 then pcall(function() wearRemote:InvokeServer(tonumber(skinData.Pants)) end) task.wait(0.9) end
     if skinData.Face and tonumber(skinData.Face) ~= 0 then pcall(function() wearRemote:InvokeServer(tonumber(skinData.Face)) end) task.wait(0.9) end
+    
+    -- Aplicando Acessórios salvos
     if skinData.Accessories then
         for _, accId in ipairs(skinData.Accessories) do
             if tonumber(accId) ~= 0 then pcall(function() wearRemote:InvokeServer(tonumber(accId)) end) task.wait(0.9) end
+        end
+    end
+
+    -- NOVIDADE: Aplicando as Animações enviando-as diretamente para o Remote do servidor do Brookhaven!
+    if skinData.Animations then
+        for animName, animId in pairs(skinData.Animations) do
+            if animId and tonumber(animId) ~= 0 then 
+                pcall(function() wearRemote:InvokeServer(tonumber(animId)) end) 
+                task.wait(0.9) 
+            end
         end
     end
 end
@@ -129,7 +146,6 @@ local function createCard(id, defName, isAnimation)
         local s, info = pcall(Marketplace.GetProductInfo, Marketplace, id)
         if s and info then
             label.Text = info.Name
-            -- Se for do tipo animação, força a thumbnail correta para renderizar o boneco laranja na pose real
             if isAnimation or info.AssetTypeId == 24 then
                 imgLabel.Image = "rbxthumb://type=Asset&id=" .. id .. "&w=150&h=150"
             end
