@@ -1,4 +1,4 @@
--- [[ CUBNIT OMNI - DATABASE & CLIPBOARD v32.8 (COMPACT FIX - UPDATED) ]] --
+-- [[ CUBNIT OMNI - DATABASE & CLIPBOARD v33.5 (REAL ANIMATION THUMBNAILS FIX) ]] --
 local Players, Marketplace, UserInputService, HttpService, ReplicatedStorage = game:GetService("Players"), game:GetService("MarketplaceService"), game:GetService("UserInputService"), game:GetService("HttpService"), game:GetService("ReplicatedStorage")
 local LP, PG = Players.LocalPlayer, Players.LocalPlayer:WaitForChild("PlayerGui")
 local FILE_NAME, remotesFolder = "CubnitOmni_SavedAvatars.json", ReplicatedStorage:WaitForChild("Remotes", 5)
@@ -116,15 +116,28 @@ local function clonarSkinBrookhaven(skinData)
     end
 end
 
-local function createCard(id, defName)
+local function createCard(id, defName, isAnimation)
     if not id or tostring(id) == "0" or id == "" then return end
-    local card = create("TextButton", gridScroll, { BackgroundColor3 = Color3.fromRGB(15, 15, 15), Text = "", ZIndex = 104 }, 6)
-    create("UIStroke", card, { Color = Color3.fromRGB(40, 40, 40), Thickness = 1 })
-    create("ImageLabel", card, { Size = UDim2.new(1, -10, 0, 65), Position = UDim2.new(0, 5, 0, 5), BackgroundTransparency = 1, Image = "rbxthumb://type=Asset&id=" .. id .. "&w=150&h=150", ZIndex = 105 })
+    
+    local card = create("TextButton", gridScroll, { BackgroundColor3 = isAnimation and Color3.fromRGB(20, 15, 30) or Color3.fromRGB(15, 15, 15), Text = "", ZIndex = 104 }, 6)
+    create("UIStroke", card, { Color = isAnimation and Color3.fromRGB(230, 110, 20) or Color3.fromRGB(40, 40, 40), Thickness = 1 })
+    
+    local imgLabel = create("ImageLabel", card, { Size = UDim2.new(1, -10, 0, 65), Position = UDim2.new(0, 5, 0, 5), BackgroundTransparency = 1, Image = "rbxthumb://type=Asset&id=" .. id .. "&w=150&h=150", ZIndex = 105 })
     local label = create("TextLabel", card, { Size = UDim2.new(1, -6, 0, 35), Position = UDim2.new(0, 3, 1, -45), Text = "...", TextColor3 = Color3.fromRGB(200, 200, 200), TextSize = 8, Font = Enum.Font.Gotham, TextWrapped = true, BackgroundTransparency = 1, ZIndex = 105 })
+    
     task.spawn(function()
-        local s, info = pcall(Marketplace.GetProductInfo, Marketplace, id) label.Text = s and info and info.Name or defName
+        local s, info = pcall(Marketplace.GetProductInfo, Marketplace, id)
+        if s and info then
+            label.Text = info.Name
+            -- Se for do tipo animação, força a thumbnail correta para renderizar o boneco laranja na pose real
+            if isAnimation or info.AssetTypeId == 24 then
+                imgLabel.Image = "rbxthumb://type=Asset&id=" .. id .. "&w=150&h=150"
+            end
+        else
+            label.Text = defName
+        end
     end)
+    
     card.MouseButton1Click:Connect(function() currentId = id cMsg.Text = "COPIAR ID DO: " .. defName:upper() confirmGui.Visible = true end)
 end
 
@@ -134,9 +147,16 @@ local function displayAvatarData(name, data)
     title.Text, currentInspectedName, currentInspectedData = "INSPECIONANDO: " .. name:upper(), name, data
     updateVisibility()
     for _, v in pairs(gridScroll:GetChildren()) do if v:IsA("TextButton") then v:Destroy() end end
+    
     createCard(data.Shirt, "Camisa") createCard(data.Pants, "Calça") createCard(data.Face, "Rosto")
     for part, id in pairs(data.BodyParts or {}) do createCard(id, part) end
     for _, accId in ipairs(data.Accessories or {}) do createCard(accId, "Acessório") end
+    
+    if data.Animations then
+        for animName, animId in pairs(data.Animations) do
+            createCard(animId, "Anim: " .. animName, true)
+        end
+    end
 end
 
 local function clearList() for _, v in pairs(listPage:GetChildren()) do if v:IsA("Frame") or v:IsA("TextButton") then v:Destroy() end end end
@@ -152,7 +172,22 @@ local function updatePlayerList()
             local hum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
             local s, d = pcall(function() return hum and hum:GetAppliedDescription(hum) end)
             if s and d then
-                local raw = { Shirt = d.Shirt, Pants = d.Pants, Face = d.Face, Accessories = {}, BodyParts = { Head = d.Head, Torso = d.Torso, LeftArm = d.LeftArm, RightArm = d.RightArm, LeftLeg = d.LeftLeg, RightLeg = d.RightLeg } }
+                local raw = { 
+                    Shirt = d.Shirt, 
+                    Pants = d.Pants, 
+                    Face = d.Face, 
+                    Accessories = {}, 
+                    BodyParts = { Head = d.Head, Torso = d.Torso, LeftArm = d.LeftArm, RightArm = d.RightArm, LeftLeg = d.LeftLeg, RightLeg = d.RightLeg },
+                    Animations = {
+                        Idle = d.IdleAnimation,
+                        Walk = d.WalkAnimation,
+                        Run = d.RunAnimation,
+                        Jump = d.JumpAnimation,
+                        Fall = d.FallAnimation,
+                        Climb = d.ClimbAnimation,
+                        Swim = d.SwimAnimation
+                    }
+                }
                 for _, a in ipairs(d:GetAccessories(true)) do if a.AssetId and a.AssetId ~= 0 then table.insert(raw.Accessories, a.AssetId) end end
                 displayAvatarData(p.Name, raw)
             end
@@ -165,21 +200,21 @@ local function updateSavedList()
     if not next(saved) then
         create("TextLabel", listPage, { Size = UDim2.new(1, 0, 0, 40), BackgroundTransparency = 1, Text = "NENHUM AVATAR SALVO.", TextColor3 = Color3.fromRGB(140, 140, 140), Font = Enum.Font.FredokaOne, TextSize = 12 }) return
     end
-    
+
     local sortedKeys = {}
     for k in pairs(saved) do table.insert(sortedKeys, k) end
     table.sort(sortedKeys)
-    
+
     for _, uniqueId in ipairs(sortedKeys) do
         local item = saved[uniqueId]
         local container = create("Frame", listPage, { Size = UDim2.new(1, -8, 0, 35), BackgroundColor3 = Color3.fromRGB(15, 15, 15) }, 6)
         create("UIStroke", container, { Color = Color3.fromRGB(45, 45, 45), Thickness = 1 })
         local b = create("TextButton", container, { Size = UDim2.new(1, -110, 1, 0), BackgroundTransparency = 1, Text = "   " .. item.Name, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBold, TextSize = 11, ZIndex = 105 })
         b.MouseButton1Click:Connect(function() displayAvatarData(item.Name, item.Data) end)
-        
+
         local copySkinBtn = create("ImageButton", container, { Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(1, -66, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1, Image = "rbxassetid://133764834615931", ScaleType = Enum.ScaleType.Fit, ZIndex = 106 })
         copySkinBtn.MouseButton1Click:Connect(function() task.spawn(clonarSkinBrookhaven, item.Data) end)
-        
+
         local function createActionBtn(img, xOffset, cb)
             local btn = create("ImageButton", container, { Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(1, xOffset, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1, Image = "rbxassetid://"..img, ScaleType = Enum.ScaleType.Fit, ZIndex = 106 })
             btn.MouseButton1Click:Connect(cb)
