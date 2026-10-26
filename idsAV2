@@ -22,6 +22,19 @@ end
 if PG:FindFirstChild("CubnitOmni_Final") then PG.CubnitOmni_Final:Destroy() end
 
 local sg = create("ScreenGui", PG, { Name = "CubnitOmni_Final", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 999 })
+
+-- ADAPTAÇÃO AUTOMÁTICA DE ESCALA (+70% NO PC, PADRÃO NO MOBILE)
+local uiScale = Instance.new("UIScale", sg)
+local function updateUIScale()
+    if not UserInputService.TouchEnabled then
+        uiScale.Scale = 1.7 -- Aumenta 70% no PC
+    else
+        uiScale.Scale = 1.0 -- Mantém tamanho padrão no mobile
+    end
+end
+UserInputService:GetPropertyChangedSignal("TouchEnabled"):Connect(updateUIScale)
+updateUIScale()
+
 local currentId, currentInspectedData, currentInspectedName, currentTab, activeRenameId = nil, nil, "", "Players", nil
 local main = create("Frame", sg, { Size = UDim2.new(0, 380, 0, 350), Position = UDim2.new(0.5, -190, 0.5, -175), BackgroundColor3 = Color3.fromRGB(0, 0, 0), Visible = false, ZIndex = 100 }, 8)
 create("UIStroke", main, { Color = Color3.fromRGB(255, 255, 255), Thickness = 3 })
@@ -265,7 +278,7 @@ updateSavedList = function()
         local container = create("Frame", listPage, { Size = UDim2.new(1, -8, 0, 35), BackgroundColor3 = Color3.fromRGB(15, 15, 15) }, 6)
         create("UIStroke", container, { Color = Color3.fromRGB(45, 45, 45), Thickness = 1 })
         
-        local b = create("TextButton", container, { Size = UDim2.new(1, -110, 1, 0), BackgroundTransparency = 1, Text = "   " .. item.Name, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBold, TextSize = 11, ZIndex = 105 })
+        local b = create("TextButton", container, { Size = UDim2.new(1, -110, 1, 0), BackgroundTransparency = 1, Text = "    " .. item.Name, TextColor3 = Color3.fromRGB(255, 255, 255), TextXAlignment = Enum.TextXAlignment.Left, Font = Enum.Font.GothamBold, TextSize = 11, ZIndex = 105 })
         b.MouseButton1Click:Connect(function() displayAvatarData(item.Name, item.Data) end)
 
         local copySkinBtn = create("ImageButton", container, { Size = UDim2.new(0, 22, 0, 22), Position = UDim2.new(1, -66, 0.5, 0), AnchorPoint = Vector2.new(1, 0.5), BackgroundTransparency = 1, Image = "rbxassetid://133764834615931", ScaleType = Enum.ScaleType.Fit, ZIndex = 106 })
